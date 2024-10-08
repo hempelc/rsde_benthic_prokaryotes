@@ -39,7 +39,8 @@ metadata <- metadata[, -(which(names(metadata) == "Sample ID"))] %>% drop_na()
 keep <- rownames(metadata)
 
 # Cut down metadata and process data types
-metadata$"Red Sea zone" <- as.factor(metadata$"Red Sea zone")
+metadata$'Red_Sea_zone' <- factor(metadata$'Red_Sea_zone', levels=c("Gulf of Aqaba", "North Red Sea", "Central-north Red Sea", "Central-south Red Sea", "South Red Sea"))
+
 metadata$"Zone & Discovery" <- as.factor(metadata$"Zone & Discovery")
 metadata$Latitude <- as.numeric(metadata$Latitude)
 metadata$Depth_untransformed <- metadata$Depth
@@ -47,14 +48,14 @@ metadata$Depth_untransformed <- metadata$Depth
 # Add column with depth categories based on Larissa's recommendations
 metadata <- metadata %>%
   mutate(
-    "Depth category" = case_when(
+    "Depth_category" = case_when(
       Depth > 1000 ~ "Bathypelagic (>1000m)",
       Depth >= 200 & Depth <= 1000 ~ "Mesopelagic (200-1000m)",
       Depth <= 200 ~ "Epipelagic (<200m)",
       TRUE ~ NA_character_  # default condition (optional)
     )
   )
-metadata$'Depth category' <- factor(metadata$'Depth category', levels=c("Epipelagic (<200m)", "Mesopelagic (200-1000m)", "Bathypelagic (>1000m)"))
+metadata$'Depth_category' <- factor(metadata$'Depth_category', levels=c("Epipelagic (<200m)", "Mesopelagic (200-1000m)", "Bathypelagic (>1000m)"))
 
 # Add new columns for dummy variables for categorical variables
 metadata <- metadata %>%
@@ -78,14 +79,16 @@ metadata <- metadata %>%
       TRUE ~ 0
     )
   )
-metadata$"Zone SRS" <- as.integer(metadata$"Red Sea zone" == "South Red Sea")
-metadata$"Zone CSRS" <- as.integer(metadata$"Red Sea zone" == "Central-south Red Sea")
-metadata$"Zone CNRS" <- as.integer(metadata$"Red Sea zone" == "Central-north Red Sea")
-metadata$"Zone NRS" <- as.integer(metadata$"Red Sea zone" == "North Red Sea")
-metadata$"Zone GOA" <- as.integer(metadata$"Red Sea zone" == "Gulf of Aqaba")
-metadata$"DSC Atlantis" <- as.integer(metadata$"Zone & Discovery" == "Atlantis 2 Brine pool")
+metadata$"Zone SRS" <- as.integer(metadata$"Red_Sea_zone" == "South Red Sea")
+metadata$"Zone CSRS" <- as.integer(metadata$"Red_Sea_zone" == "Central-south Red Sea")
+metadata$"Zone CNRS" <- as.integer(metadata$"Red_Sea_zone" == "Central-north Red Sea")
+metadata$"Zone NRS" <- as.integer(metadata$"Red_Sea_zone" == "North Red Sea")
+metadata$"Zone GOA" <- as.integer(metadata$"Red_Sea_zone" == "Gulf of Aqaba")
+#metadata$"DSC Atlantis" <- as.integer(metadata$"Zone & Discovery" == "Atlantis 2 Brine pool")
 metadata$"DSC Canyon" <- as.integer(metadata$"Zone & Discovery" == "Al Wajh Canyon")
 metadata$"DSC Aqaba" <- as.integer(metadata$"Zone & Discovery" == "Aqaba Brine pool")
+metadata$"DSC Afifi" <- as.integer(metadata$"Zone & Discovery" == "Al Afifi Brine pool")
+metadata$"DSC" <- as.integer(metadata$"Discovery site locations" != "Non_discovery")
 
 # - Check if metadata is correlated
 correlation_df <- metadata %>%
@@ -233,10 +236,10 @@ cor_heatmap_env <- physeq %>%
               vars = c("Oxygen_saturation_Mean")
   )
 cor_heatmap_env
-png(file.path(plot_outdir, "cor_heatmap_env.png"), width = 350, height = 600, res=100)
+png(file.path(plot_outdir, "cor_heatmap_env_v2.png"), width = 350, height = 600, res=100)
 cor_heatmap_env
 dev.off()
-svglite::svglite(file.path(plot_outdir, "cor_heatmap_env.svg"), width = 3.5, height = 6)
+svglite::svglite(file.path(plot_outdir, "cor_heatmap_env_v2.svg"), width = 3.5, height = 6)
 cor_heatmap_env
 dev.off()
 
@@ -353,57 +356,60 @@ physeq %>%
 rda_zone <- physeq %>%
   tax_transform(rank = "phylum", trans = "clr") %>%
   ord_calc(
-    constraints = c("Latitude", "Depth"),
+    constraints = c("Latitude", "Depth", "Oxygen_saturation_Mean"),
     method = "RDA"
   ) %>% 
   ord_plot(
     axes = c(1, 2),
-    colour = "Red.Sea.zone", fill = "Red.Sea.zone",
-    shape = "Red.Sea.zone", alpha = 0.8,
+    colour = "Red_Sea_zone", fill = "Red_Sea_zone",
+    shape = "Red_Sea_zone", alpha = 0.8,
     size = 2
   ) +
-  ggside::geom_xsideboxplot(aes(fill = Red.Sea.zone, y = Red.Sea.zone), orientation = "y", varwidth=FALSE, show.legend=FALSE) +
-  ggside::geom_ysideboxplot(aes(fill = Red.Sea.zone, x = Red.Sea.zone), orientation = "x", varwidth=FALSE, show.legend=FALSE) +
+  ggside::geom_xsideboxplot(aes(fill = Red_Sea_zone, y = Red_Sea_zone), orientation = "y", varwidth=FALSE, show.legend=FALSE) +
+  ggside::geom_ysideboxplot(aes(fill = Red_Sea_zone, x = Red_Sea_zone), orientation = "x", varwidth=FALSE, show.legend=FALSE) +
   ggside::theme_ggside_void()
-ggsave(units="px", width=2000, height=1400, file.path(plot_outdir, "rda_zone.png"), plot = rda_zone)
-ggsave(units="px", width=2000, height=1400, file.path(plot_outdir, "rda_zone.svg"), plot = rda_zone)
+# Somehow the sideboxplots don't work anymore
+ggsave(units="px", width=2000, height=1400, file.path(plot_outdir, "rda_zone_v2.png"), plot = rda_zone)
+ggsave(units="px", width=2000, height=1400, file.path(plot_outdir, "rda_zone_v2.svg"), plot = rda_zone)
+
 
 # RDA coloured by Depth 
 rda_depth <- physeq %>%
   tax_transform(rank = "phylum", trans = "clr") %>%
   ord_calc(
-    constraints = c("Latitude", "Depth"),
+    constraints = c("Latitude", "Depth", "Oxygen_saturation_Mean"),
     method = "RDA"
   ) %>% 
   ord_plot(
     axes = c(1, 2),
     colour = "Depth_untransformed", fill = "Depth_untransformed",
-    shape = "Depth.category", alpha = 0.8,
+    shape = "Depth_category", alpha = 0.8,
     size = 2
   )  +
   scale_colour_viridis_c(direction=-1) +
-  ggside::geom_xsideboxplot(aes(group = Depth.category, y = Depth_untransformed), orientation = "y", varwidth=FALSE) +
-  ggside::geom_ysideboxplot(aes(group = Depth.category, x = Depth_untransformed), orientation = "x", varwidth=FALSE) +
+  ggside::geom_xsideboxplot(aes(group = Depth_category, y = Depth_untransformed), orientation = "y", varwidth=FALSE) +
+  ggside::geom_ysideboxplot(aes(group = Depth_category, x = Depth_untransformed), orientation = "x", varwidth=FALSE) +
   ggside::theme_ggside_void()
-ggsave(units="px", width=2000, height=1350, file.path(plot_outdir, "rda_depth.png"), plot = rda_depth)
-ggsave(units="px", width=2000, height=1350, file.path(plot_outdir, "rda_depth.svg"), plot = rda_depth)
+# Somehow the sideboxplots don't work anymore
+ggsave(units="px", width=2000, height=1350, file.path(plot_outdir, "rda_depth_v2.png"), plot = rda_depth)
+ggsave(units="px", width=2000, height=1350, file.path(plot_outdir, "rda_depth_v2.svg"), plot = rda_depth)
 
 # RDA highlighting DSC sites
 rda_dsc <- physeq %>%
   tax_transform(rank = "phylum", trans = "clr") %>%
   ord_calc(
-    constraints = c("Latitude", "Depth"),
+    constraints = c("Latitude", "Depth", "Oxygen_saturation_Mean"),
     method = "RDA"
   ) %>% 
   ord_plot(
     axes = c(1, 2),
-    colour = "Discovery.site.locations", fill = "Discovery.site.locations",
-    shape = "Discovery.site.locations", alpha = "Phase.DSC",
+    colour = "Discovery site locations", fill = "Discovery site locations",
+    shape = "Discovery site locations", alpha = "DSC",
     size = 2
   ) + 
   scale_shape_girafe_filled()
-ggsave(units="px", width=2000, height=1350, file.path(plot_outdir, "rda_dsc.png"), plot = rda_dsc)
-ggsave(units="px", width=2000, height=1350, file.path(plot_outdir, "rda_dsc.svg"), plot = rda_dsc)
+ggsave(units="px", width=2000, height=1350, file.path(plot_outdir, "rda_dsc_v2.png"), plot = rda_dsc)
+ggsave(units="px", width=2000, height=1350, file.path(plot_outdir, "rda_dsc_v2.svg"), plot = rda_dsc)
 
 #### Optional:
 # OTUs Red Sea Zone
@@ -415,8 +421,8 @@ physeq %>%
   ) %>% 
   ord_plot(
     axes = c(1, 2),
-    colour = "Red.Sea.zone", fill = "Red.Sea.zone",
-    shape = "Red.Sea.zone", alpha = 0.5,
+    colour = "Red_Sea_zone", fill = "Red_Sea_zone",
+    shape = "Red_Sea_zone", alpha = 0.5,
     size = 2
   ) + 
   scale_shape_girafe_filled() 
@@ -445,12 +451,12 @@ rda_depth <- physeq %>%
   ord_plot(
     axes = c(1, 2),
     colour = "Depth_untransformed", fill = "Depth_untransformed",
-    shape = "Depth category", alpha = 0.8,
+    shape = "Depth_category", alpha = 0.8,
     size = 2
   )  +
   scale_colour_viridis_c(direction=-1) +
-  ggside::geom_xsideboxplot(aes(group = "Depth category", y = Depth_untransformed), orientation = "y", varwidth=FALSE) +
-  ggside::geom_ysideboxplot(aes(group = "Depth category", x = Depth_untransformed), orientation = "x", varwidth=FALSE) +
+  ggside::geom_xsideboxplot(aes(group = "Depth_category", y = Depth_untransformed), orientation = "y", varwidth=FALSE) +
+  ggside::geom_ysideboxplot(aes(group = "Depth_category", x = Depth_untransformed), orientation = "x", varwidth=FALSE) +
   ggside::theme_ggside_void()
 
 # RDA coloured by Red Sea Zone
@@ -469,4 +475,3 @@ rda_zone <- physeq %>%
   ggside::geom_xsideboxplot(aes(fill = "Red Sea zone", y = "Red Sea zone"), orientation = "y", varwidth=FALSE, show.legend=FALSE) +
   ggside::geom_ysideboxplot(aes(fill = "Red Sea zone", x = "Red Sea zone"), orientation = "x", varwidth=FALSE, show.legend=FALSE) +
   ggside::theme_ggside_void()
-
